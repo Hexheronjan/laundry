@@ -3,6 +3,7 @@ import Link from "next/link";
 import { Search } from "lucide-react";
 import type { Prisma, PaymentStatus } from "@prisma/client";
 import { db } from "@/lib/db";
+import { DEMO_ORDERS } from "@/lib/demo-data";
 import { PageHeader, Pagination } from "@/components/admin/ui";
 import { PaymentsManager } from "@/components/admin/PaymentsManager";
 import { Button } from "@/components/ui/Button";
@@ -40,7 +41,7 @@ export default async function PaymentsAdminPage({
 
   let total = 0;
   let pendingCount = 0;
-  let payments: Awaited<ReturnType<typeof db.payment.findMany<{ include: { order: { include: { customer: true } }; verifications: { include: { admin: { select: { name: true } } } } } }>>> = [];
+  let rows: Parameters<typeof PaymentsManager>[0]["rows"] = [];
 
   try {
     const [t, pc, p] = await Promise.all([
@@ -52,9 +53,7 @@ export default async function PaymentsAdminPage({
         skip: (page - 1) * PAGE_SIZE,
         take: PAGE_SIZE,
         include: {
-          order: {
-            include: { customer: true },
-          },
+          order: { include: { customer: true } },
           verifications: {
             orderBy: { createdAt: "desc" },
             include: { admin: { select: { name: true } } },
@@ -62,11 +61,63 @@ export default async function PaymentsAdminPage({
         },
       }),
     ]);
-    total = t;
-    pendingCount = pc;
-    payments = p;
+    if (t > 0) {
+      total = t;
+      pendingCount = pc;
+      rows = p.map((pay) => ({
+        id: pay.id,
+        orderId: pay.orderId,
+        invoiceNo: pay.order.invoiceNo,
+        customerName: pay.order.customer.name,
+        customerPhone: pay.order.customer.phone,
+        amount: pay.amount,
+        status: pay.status,
+        proofFile: pay.proofFile,
+        rejectReason: pay.rejectReason,
+        paidAt: pay.paidAt?.toISOString() ?? null,
+        createdAt: pay.createdAt.toISOString(),
+        verifications: pay.verifications.map((v) => ({
+          id: v.id,
+          adminName: v.admin.name,
+          result: v.result,
+          note: v.note,
+          createdAt: v.createdAt.toISOString(),
+        })),
+      }));
+    }
   } catch {
     // Database offline
+  }
+
+  if (rows.length === 0) {
+    const filtered = DEMO_ORDERS.filter((o) => {
+      if (status && o.payment.status !== status) return false;
+      if (q) {
+        const ql = q.toLowerCase();
+        return (
+          o.invoiceNo.toLowerCase().includes(ql) ||
+          o.customer.name.toLowerCase().includes(ql) ||
+          o.customer.phone.includes(q)
+        );
+      }
+      return true;
+    });
+    total = filtered.length;
+    pendingCount = DEMO_ORDERS.filter((o) => o.payment.status === "PENDING_VERIFICATION").length;
+    rows = filtered.map((o) => ({
+      id: o.payment.id,
+      orderId: o.id,
+      invoiceNo: o.invoiceNo,
+      customerName: o.customer.name,
+      customerPhone: o.customer.phone,
+      amount: o.payment.amount,
+      status: o.payment.status,
+      proofFile: o.payment.proofFile,
+      rejectReason: o.payment.rejectReason,
+      paidAt: o.payment.paidAt?.toISOString() ?? null,
+      createdAt: o.payment.createdAt.toISOString(),
+      verifications: [],
+    }));
   }
 
   const hrefFor = (p: number) =>
@@ -83,7 +134,6 @@ export default async function PaymentsAdminPage({
         description={`${total} pembayaran terdaftar · ${pendingCount} menunggu verifikasi`}
       />
 
-      {/* Filter dan Pencarian */}
       <form className="mb-4 flex flex-wrap gap-2" role="search">
         <input
           name="q"
@@ -117,34 +167,9 @@ export default async function PaymentsAdminPage({
         )}
       </form>
 
-      <PaymentsManager
-        rows={payments.map((p) => ({
-          id: p.id,
-          orderId: p.orderId,
-          invoiceNo: p.order.invoiceNo,
-          customerName: p.order.customer.name,
-          customerPhone: p.order.customer.phone,
-          amount: p.amount,
-          status: p.status,
-          proofFile: p.proofFile,
-          rejectReason: p.rejectReason,
-          paidAt: p.paidAt?.toISOString() ?? null,
-          createdAt: p.createdAt.toISOString(),
-          verifications: p.verifications.map((v) => ({
-            id: v.id,
-            adminName: v.admin.name,
-            result: v.result,
-            note: v.note,
-            createdAt: v.createdAt.toISOString(),
-          })),
-        }))}
-      />
+      <PaymentsManager rows={rows} />
 
-      <Pagination
-        page={page}
-        totalPages={Math.ceil(total / PAGE_SIZE)}
-        hrefFor={hrefFor}
-      />
+      <Pagination page={page} totalPages={Math.ceil(total / PAGE_SIZE)} hrefFor={hrefFor} />
     </>
   );
 }

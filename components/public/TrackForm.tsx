@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { m } from "motion/react";
-import { Search, UploadCloud, AlertCircle, CheckCircle, Clock } from "lucide-react";
+import { Search, UploadCloud, AlertCircle, CheckCircle, Clock, Zap } from "lucide-react";
 import { toast } from "sonner";
 import { trackSchema } from "@/lib/validations/order";
 import { trackOrder, type TrackResult } from "@/lib/actions/public";
@@ -13,7 +13,13 @@ import { Button } from "@/components/ui/Button";
 import { Field, Input } from "@/components/ui/Field";
 import { StatusStepper } from "@/components/ui/StatusStepper";
 import { StatusBadge } from "@/components/ui/StatusBadge";
-import { FULFILLMENT_LABEL, ORDER_STATUS_LABEL, formatDateTime, rupiah, type OrderStatusKey } from "@/lib/utils/format";
+import {
+  FULFILLMENT_LABEL,
+  ORDER_STATUS_LABEL,
+  formatDateTime,
+  rupiah,
+  type OrderStatusKey,
+} from "@/lib/utils/format";
 import type { z } from "zod";
 
 type In = z.input<typeof trackSchema>;
@@ -32,7 +38,13 @@ export function TrackForm({ bankInfo }: { bankInfo: BankInfo }) {
   const [uploading, setUploading] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
 
-  const { register, handleSubmit, getValues, formState: { errors } } = useForm<In>({
+  const {
+    register,
+    handleSubmit,
+    getValues,
+    setValue,
+    formState: { errors },
+  } = useForm<In>({
     resolver: zodResolver(trackSchema),
     mode: "onTouched",
   });
@@ -48,6 +60,14 @@ export function TrackForm({ bankInfo }: { bankInfo: BankInfo }) {
       setResult(null);
       setError(r.error);
     }
+  }
+
+  async function handleDemoTrack() {
+    const demoInv = "PRJ-20261109-0001";
+    const demoPhone = "085151951806";
+    setValue("invoiceNo", demoInv, { shouldValidate: true });
+    setValue("phone", demoPhone, { shouldValidate: true });
+    await onSubmit({ invoiceNo: demoInv, phone: demoPhone });
   }
 
   async function handleUpload(e: React.FormEvent) {
@@ -68,7 +88,6 @@ export function TrackForm({ bankInfo }: { bankInfo: BankInfo }) {
     if (r.ok) {
       toast.success(r.message);
       setSelectedFile(null);
-      // Refresh status data
       const refresh = await trackOrder({ invoiceNo: result.invoiceNo, phone: getValues("phone") });
       if (refresh.ok) setResult(refresh.data);
     } else {
@@ -78,25 +97,63 @@ export function TrackForm({ bankInfo }: { bankInfo: BankInfo }) {
 
   return (
     <div className="mx-auto max-w-3xl">
-      <form onSubmit={handleSubmit(onSubmit)} noValidate className="grid gap-4 rounded-3xl border border-line bg-white p-5 shadow-soft sm:grid-cols-2 sm:p-8">
-        <Field label="Nomor nota" error={errors.invoiceNo?.message}>
-          {(p) => <Input {...p} placeholder="LDR-20261109-0001" autoCapitalize="characters" {...register("invoiceNo")} />}
+      <form
+        onSubmit={handleSubmit(onSubmit)}
+        noValidate
+        className="grid gap-4 rounded-3xl border border-line bg-white p-5 shadow-soft sm:grid-cols-2 sm:p-8"
+      >
+        <div className="sm:col-span-2 flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-teal-500/30 bg-teal-50/70 px-4 py-3">
+          <span className="text-xs font-bold text-teal-900">
+            Ingin mencoba simulasi pelacakan progres cucian?
+          </span>
+          <button
+            type="button"
+            onClick={handleDemoTrack}
+            disabled={loading}
+            className="inline-flex items-center gap-1.5 rounded-xl bg-teal-600 px-3.5 py-1.5 text-xs font-extrabold text-white shadow-2xs hover:bg-teal-700 transition cursor-pointer"
+          >
+            <Zap className="size-3.5 text-amber-300 fill-amber-300" />
+            Cek Contoh Nota Demo (1-Klik)
+          </button>
+        </div>
+
+        <Field label="Nomor Nota Pesanan" error={errors.invoiceNo?.message}>
+          {(p) => (
+            <Input
+              {...p}
+              placeholder="Misal: PRJ-20261109-0001"
+              autoCapitalize="characters"
+              {...register("invoiceNo")}
+            />
+          )}
         </Field>
-        <Field label="Nomor WhatsApp terdaftar" error={errors.phone?.message}>
-          {(p) => <Input {...p} type="tel" inputMode="tel" placeholder="0812xxxxxxxx" {...register("phone")} />}
+        <Field label="Nomor WhatsApp Terdaftar" error={errors.phone?.message}>
+          {(p) => (
+            <Input
+              {...p}
+              type="tel"
+              inputMode="tel"
+              placeholder="0851xxxxxxxx"
+              {...register("phone")}
+            />
+          )}
         </Field>
         <Button type="submit" loading={loading} className="sm:col-span-2">
-          <Search className="size-4" strokeWidth={2} /> Cek Status
+          <Search className="size-4" strokeWidth={2} /> Lacak Status Pesanan
         </Button>
-        {error && <p role="alert" className="rounded-xl bg-red-50 px-4 py-3 text-sm text-red-700 sm:col-span-2">{error}</p>}
+        {error && (
+          <p role="alert" className="rounded-xl bg-red-50 px-4 py-3 text-sm text-red-700 sm:col-span-2">
+            {error}
+          </p>
+        )}
       </form>
 
       {result && (
         <m.section
           key={result.invoiceNo}
-          initial={{ opacity: 0, y: 24 }}
+          initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, ease: "easeOut" }}
+          transition={{ duration: 0.45, ease: "easeOut" }}
           className="mt-8 space-y-6"
           aria-live="polite"
         >
@@ -104,8 +161,8 @@ export function TrackForm({ bankInfo }: { bankInfo: BankInfo }) {
           <div className="rounded-3xl border border-line bg-white p-5 shadow-soft sm:p-8">
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div>
-                <p className="text-sm text-muted">Nomor nota</p>
-                <p className="font-mono text-xl font-bold">{result.invoiceNo}</p>
+                <p className="text-xs font-bold uppercase tracking-wider text-muted">Nomor Nota</p>
+                <p className="font-mono text-xl font-black text-primary mt-0.5">{result.invoiceNo}</p>
               </div>
               <StatusBadge tone={result.status === "DONE" ? "green" : "blue"}>
                 {ORDER_STATUS_LABEL[result.status as OrderStatusKey]}
@@ -118,32 +175,64 @@ export function TrackForm({ bankInfo }: { bankInfo: BankInfo }) {
 
           {/* Rincian Pesanan */}
           <div className="rounded-3xl border border-line bg-white p-5 shadow-soft sm:p-8">
-            <h3 className="mb-4 text-base font-bold">Rincian Pesanan</h3>
+            <h3 className="mb-4 text-base font-extrabold text-slate-900">Rincian Pesanan</h3>
             <dl className="grid gap-3 text-sm sm:grid-cols-2">
-              <div><dt className="text-muted">Pelanggan</dt><dd className="font-medium">{result.customerName}</dd></div>
-              <div><dt className="text-muted">Pengiriman</dt><dd className="font-medium">{FULFILLMENT_LABEL[result.fulfillment as keyof typeof FULFILLMENT_LABEL]}</dd></div>
-              <div><dt className="text-muted">Tanggal masuk</dt><dd className="font-medium">{formatDateTime(result.receivedAt)}</dd></div>
-              <div><dt className="text-muted">Estimasi selesai</dt><dd className="font-medium">{formatDateTime(result.estimatedDoneAt)}</dd></div>
+              <div>
+                <dt className="text-xs text-muted">Pelanggan</dt>
+                <dd className="font-bold text-slate-900">{result.customerName}</dd>
+              </div>
+              <div>
+                <dt className="text-xs text-muted">Metode Pengiriman</dt>
+                <dd className="font-bold text-slate-900">
+                  {FULFILLMENT_LABEL[result.fulfillment as keyof typeof FULFILLMENT_LABEL]}
+                </dd>
+              </div>
+              <div>
+                <dt className="text-xs text-muted">Tanggal Masuk</dt>
+                <dd className="font-medium text-slate-700">{formatDateTime(result.receivedAt)}</dd>
+              </div>
+              <div>
+                <dt className="text-xs text-muted">Estimasi Selesai</dt>
+                <dd className="font-medium text-slate-700">{formatDateTime(result.estimatedDoneAt)}</dd>
+              </div>
             </dl>
-            <ul className="mt-5 divide-y divide-line rounded-xl border border-line text-sm">
+            <ul className="mt-5 divide-y divide-line rounded-2xl border border-line text-sm overflow-hidden">
               {result.items.map((it, i) => (
                 <li key={i} className="flex justify-between gap-4 px-4 py-3">
-                  <span>{it.name} × {it.quantity} {it.unit}</span>
-                  <span className="font-semibold">{rupiah(it.subtotal)}</span>
+                  <span>
+                    <b className="text-slate-900">{it.name}</b> × {it.quantity} {it.unit}
+                  </span>
+                  <span className="font-bold text-slate-900">{rupiah(it.subtotal)}</span>
                 </li>
               ))}
-              <li className="flex justify-between gap-4 bg-slate-50 px-4 py-3 font-bold">
+              <li className="flex justify-between gap-4 bg-slate-50 px-4 py-3.5 font-extrabold">
                 <span>Total Tagihan</span>
-                <span className="text-primary">{rupiah(result.total)}</span>
+                <span className="text-primary text-base">{rupiah(result.total)}</span>
               </li>
             </ul>
 
             {/* Status Pembayaran */}
             <div className="mt-6 border-t border-line pt-6">
               <div className="flex items-center justify-between gap-3">
-                <span className="text-sm font-semibold">Status Pembayaran</span>
-                <StatusBadge tone={{ UNPAID: "yellow", PENDING_VERIFICATION: "yellow", PAID: "green", REJECTED: "red" }[result.payment?.status ?? "UNPAID"] as "yellow" | "green" | "red"}>
-                  {{ UNPAID: "Menunggu pembayaran", PENDING_VERIFICATION: "Menunggu verifikasi admin", PAID: "Lunas", REJECTED: "Ditolak" }[result.payment?.status ?? "UNPAID"]}
+                <span className="text-sm font-bold text-slate-900">Status Pembayaran</span>
+                <StatusBadge
+                  tone={
+                    {
+                      UNPAID: "yellow",
+                      PENDING_VERIFICATION: "yellow",
+                      PAID: "green",
+                      REJECTED: "red",
+                    }[result.payment?.status ?? "UNPAID"] as "yellow" | "green" | "red"
+                  }
+                >
+                  {
+                    {
+                      UNPAID: "Menunggu pembayaran",
+                      PENDING_VERIFICATION: "Menunggu verifikasi admin",
+                      PAID: "Lunas",
+                      REJECTED: "Ditolak",
+                    }[result.payment?.status ?? "UNPAID"]
+                  }
                 </StatusBadge>
               </div>
 
@@ -153,7 +242,9 @@ export function TrackForm({ bankInfo }: { bankInfo: BankInfo }) {
                   <div>
                     <p className="font-bold">Pembayaran Ditolak</p>
                     <p className="mt-1">Alasan: {result.payment.rejectReason}</p>
-                    <p className="mt-1 text-xs">Silakan periksa kembali transfer Anda dan unggah ulang bukti yang benar di bawah.</p>
+                    <p className="mt-1 text-xs">
+                      Silakan periksa kembali transfer Anda dan unggah ulang bukti yang benar di bawah.
+                    </p>
                   </div>
                 </div>
               )}
@@ -163,7 +254,9 @@ export function TrackForm({ bankInfo }: { bankInfo: BankInfo }) {
                   <Clock className="size-5 shrink-0 text-sky-600" />
                   <div>
                     <p className="font-bold">Menunggu Verifikasi</p>
-                    <p className="mt-1">Bukti transfer Anda sudah kami terima dan sedang diverifikasi oleh admin kami.</p>
+                    <p className="mt-1">
+                      Bukti transfer Anda sudah kami terima dan sedang diverifikasi oleh admin kami.
+                    </p>
                   </div>
                 </div>
               )}
@@ -183,8 +276,12 @@ export function TrackForm({ bankInfo }: { bankInfo: BankInfo }) {
           {/* Form Pembayaran & Unggah Bukti Transfer jika belum lunas */}
           {result.payment?.status !== "PAID" && bankInfo.enableProofUpload && (
             <div className="rounded-3xl border border-line bg-white p-5 shadow-soft sm:p-8">
-              <h3 className="text-base font-bold">Instruksi Pembayaran Transfer Bank</h3>
-              <p className="mt-1 text-sm text-muted">Silakan transfer sesuai total tagihan ke rekening resmi kami berikut:</p>
+              <h3 className="text-base font-extrabold text-slate-900">
+                Instruksi Pembayaran Transfer Bank
+              </h3>
+              <p className="mt-1 text-sm text-muted">
+                Silakan transfer sesuai total tagihan ke rekening resmi kami berikut:
+              </p>
 
               {bankInfo.bankAccountNumber ? (
                 <div className="mt-4 rounded-2xl border border-primary/20 bg-primary-soft p-5 text-sm">
@@ -195,7 +292,9 @@ export function TrackForm({ bankInfo }: { bankInfo: BankInfo }) {
                     </div>
                     <div>
                       <p className="text-xs text-muted">Nomor Rekening</p>
-                      <p className="font-mono text-lg font-extrabold text-primary">{bankInfo.bankAccountNumber}</p>
+                      <p className="font-mono text-lg font-extrabold text-primary">
+                        {bankInfo.bankAccountNumber}
+                      </p>
                     </div>
                     <div>
                       <p className="text-xs text-muted">Atas Nama</p>
@@ -204,15 +303,21 @@ export function TrackForm({ bankInfo }: { bankInfo: BankInfo }) {
                   </div>
                 </div>
               ) : (
-                <p className="mt-4 text-sm text-slate-500 italic">Informasi rekening dapat dikonfirmasi via WhatsApp.</p>
+                <p className="mt-4 text-sm text-slate-500 italic">
+                  Informasi rekening dapat dikonfirmasi via WhatsApp.
+                </p>
               )}
 
               <form onSubmit={handleUpload} className="mt-6 border-t border-line pt-6">
-                <label className="mb-2 block text-sm font-semibold">
-                  {result.payment?.status === "REJECTED" ? "Unggah Ulang Bukti Transfer" : "Unggah Bukti Transfer"}
+                <label className="mb-2 block text-sm font-bold text-slate-900">
+                  {result.payment?.status === "REJECTED"
+                    ? "Unggah Ulang Bukti Transfer"
+                    : "Unggah Bukti Transfer"}
                 </label>
-                <p className="mb-3 text-xs text-muted">Format: JPG, PNG, atau WEBP. Maksimal ukuran file 5 MB.</p>
-                
+                <p className="mb-3 text-xs text-muted">
+                  Format: JPG, PNG, atau WEBP. Maksimal ukuran file 5 MB.
+                </p>
+
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
                   <input
                     type="file"

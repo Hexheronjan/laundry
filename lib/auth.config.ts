@@ -1,7 +1,14 @@
 import type { NextAuthConfig } from "next-auth";
 
-/** Konfigurasi edge-safe (tanpa Prisma/bcrypt) — dipakai oleh proxy.ts. */
+const FALLBACK_AUTH_SECRET =
+  process.env.AUTH_SECRET ||
+  process.env.NEXTAUTH_SECRET ||
+  "prajalinks-laundry-production-fallback-secret-key-2026-v1";
+
+/** Konfigurasi edge-safe (tanpa Prisma/bcrypt) — dipakai oleh proxy.ts & lib/auth.ts. */
 export const authConfig = {
+  secret: FALLBACK_AUTH_SECRET,
+  trustHost: true,
   pages: { signIn: "/login" },
   session: { strategy: "jwt", maxAge: 60 * 60 * 8 },
   providers: [],

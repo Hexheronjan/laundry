@@ -202,9 +202,29 @@ export function BookingForm({
             {/* LANGKAH 1 */}
             {step === 0 && (
               <div className="space-y-5">
-                <div>
-                  <h2 className="text-xl font-bold text-slate-900">Informasi Pelanggan</h2>
-                  <p className="text-xs text-muted mt-1">Masukkan data Anda untuk kemudahan verifikasi dan koordinasi.</p>
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div>
+                    <h2 className="text-xl font-bold text-slate-900">Informasi Pelanggan</h2>
+                    <p className="text-xs text-muted mt-1">
+                      Masukkan data Anda untuk kemudahan verifikasi dan koordinasi.
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      form.setValue("customerName", "Budi Santoso", { shouldValidate: true });
+                      form.setValue("phone", "085151951806", { shouldValidate: true });
+                      form.setValue(
+                        "address",
+                        "Jl. Boulevard Praja Blok A2 No. 18, Jakarta Pusat",
+                        { shouldValidate: true }
+                      );
+                    }}
+                    className="inline-flex items-center gap-1.5 rounded-xl border border-teal-500/30 bg-teal-50 px-3 py-1.5 text-xs font-extrabold text-teal-800 hover:bg-teal-100 transition cursor-pointer"
+                  >
+                    <Sparkles className="size-3.5 text-teal-600" />
+                    Isi Contoh Data Demo
+                  </button>
                 </div>
 
                 <Field label="Nama Lengkap" error={errors.customerName?.message}>

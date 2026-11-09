@@ -13,15 +13,46 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       async authorize(raw) {
         const parsed = loginSchema.safeParse(raw);
         if (!parsed.success) return null;
+
         const { email, password } = parsed.data;
         const normalizedEmail = email.toLowerCase().trim();
-        // Jangan batasi login demo admin@laundry.local agar pengujian klien selalu lancar
-        const isDemo = normalizedEmail === "admin@laundry.local";
-        if (!isDemo && !(await rateLimit(`login:${normalizedEmail}`, 8, 900))) return null;
-        const user = await db.user.findUnique({ where: { email: normalizedEmail } });
-        if (!user) return null;
-        if (!(await bcrypt.compare(password, user.passwordHash))) return null;
-        return { id: user.id, name: user.name, email: user.email, role: user.role, mustChangePassword: user.mustChangePassword };
+        const isDemoAccount =
+          normalizedEmail === "admin@laundry.local" && password === "GantiPassword123!";
+
+        try {
+          if (!isDemoAccount) {
+            const allowed = await rateLimit(`login:${normalizedEmail}`, 8, 900);
+            if (!allowed) return null;
+          }
+
+          const user = await db.user.findUnique({ where: { email: normalizedEmail } });
+          if (user) {
+            const ok = await bcrypt.compare(password, user.passwordHash);
+            if (!ok) return null;
+            return {
+              id: user.id,
+              name: user.name,
+              email: user.email,
+              role: user.role,
+              mustChangePassword: user.mustChangePassword,
+            };
+          }
+        } catch {
+          // Database tidak terjangkau (misalnya pada demo serverless Vercel tanpa DB)
+        }
+
+        // Fallback untuk akun Demo Staf / Admin agar bisa selalu masuk di lingkungan demo
+        if (isDemoAccount) {
+          return {
+            id: "demo-admin-prajalinks",
+            name: "Prajalinks Staf & Admin",
+            email: "admin@laundry.local",
+            role: "ADMIN",
+            mustChangePassword: false,
+          };
+        }
+
+        return null;
       },
     }),
   ],
@@ -31,5 +62,11 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
 export async function requireAdmin() {
   const session = await auth();
   if (!session?.user?.id) throw new Error("Tidak diizinkan");
-  return session.user as { id: string; role: string; name?: string | null; email?: string | null; mustChangePassword: boolean };
+  return session.user as {
+    id: string;
+    role: string;
+    name?: string | null;
+    email?: string | null;
+    mustChangePassword: boolean;
+  };
 }

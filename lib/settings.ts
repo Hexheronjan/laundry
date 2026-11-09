@@ -55,7 +55,102 @@ export const DEFAULT_SETTINGS = {
   enableProofUpload: true,
 };
 
-/** Pengaturan usaha (1 baris). Fallback ke default jika database belum di-seed atau offline saat build. */
+const now = new Date();
+
+export const DEFAULT_SERVICES = [
+  {
+    id: "srv-cuci-kering-lipat",
+    name: "Cuci Kering Lipat",
+    description:
+      "Pakaian dicuci bersih higienis satu mesin per pelanggan, dikeringkan optimal, dan dilipat rapi dengan pewangi premium tahan lama.",
+    price: 8000,
+    unit: "kg",
+    estimatedHours: 24,
+    imageUrl: "/images/kiloan.jpg",
+    isActive: true,
+    sortOrder: 1,
+    deletedAt: null as Date | null,
+    createdAt: now,
+    updatedAt: now,
+  },
+  {
+    id: "srv-cuci-setrika-uap",
+    name: "Cuci Setrika Uap (Reguler)",
+    description:
+      "Perawatan komplit pencucian anti-bakteri disusul setrika uap boiler presisi tanpa risiko gosong, dikemas plastik kedap udara.",
+    price: 10000,
+    unit: "kg",
+    estimatedHours: 48,
+    imageUrl: "/images/setrika.jpg",
+    isActive: true,
+    sortOrder: 2,
+    deletedAt: null as Date | null,
+    createdAt: now,
+    updatedAt: now,
+  },
+  {
+    id: "srv-express-kilat-6jam",
+    name: "Express Kilat (6 Jam)",
+    description:
+      "Layanan prioritas untuk kebutuhan mendesak. Selesai bersih, harum mewah, dan licin dalam waktu 6 jam siap langsung dipakai.",
+    price: 18000,
+    unit: "kg",
+    estimatedHours: 6,
+    imageUrl: "/images/express.jpg",
+    isActive: true,
+    sortOrder: 3,
+    deletedAt: null as Date | null,
+    createdAt: now,
+    updatedAt: now,
+  },
+  {
+    id: "srv-bed-cover-quilt",
+    name: "Bed Cover & Selimut Tebal",
+    description:
+      "Pencucian deep-clean untuk serat tebal bed cover, menghilangkan tungau dan debu serat hingga lembut mengembang kembali.",
+    price: 35000,
+    unit: "pcs",
+    estimatedHours: 48,
+    imageUrl: "/images/bedcover.jpg",
+    isActive: true,
+    sortOrder: 4,
+    deletedAt: null as Date | null,
+    createdAt: now,
+    updatedAt: now,
+  },
+  {
+    id: "srv-setrika-uap-satuan",
+    name: "Setrika Uap Halus Satuan",
+    description:
+      "Khusus kemeja kerja, celana formal, dress, batik tulis, dan jas dengan pelicin uap khusus serta gratis hanger eksklusif.",
+    price: 12000,
+    unit: "pcs",
+    estimatedHours: 24,
+    imageUrl: "/images/setrika.jpg",
+    isActive: true,
+    sortOrder: 5,
+    deletedAt: null as Date | null,
+    createdAt: now,
+    updatedAt: now,
+  },
+  {
+    id: "srv-sneakers-bag-care",
+    name: "Sneakers & Bag Treatment",
+    description:
+      "Cuci basah manual khusus sepatu dan tas dengan pembersih pH seimbang yang aman untuk kanvas, kulit, mesh, dan suede.",
+    price: 30000,
+    unit: "pcs",
+    estimatedHours: 72,
+    imageUrl: "/images/sepatu.jpg",
+    isActive: true,
+    sortOrder: 6,
+    deletedAt: null as Date | null,
+    createdAt: now,
+    updatedAt: now,
+  },
+];
+
+/** Pengaturan usaha (1 baris). Fallback ke default jika database belum di-seed atau offline. */
 export const getSettings = cache(async () => {
   try {
     const s = await db.setting.findUnique({ where: { id: 1 } });
@@ -85,8 +180,8 @@ export const getActiveServices = cache(async () => {
       where: { isActive: true, deletedAt: null },
       orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
     });
-    return list;
+    return list.length > 0 ? list : DEFAULT_SERVICES;
   } catch {
-    return [];
+    return DEFAULT_SERVICES;
   }
 });
