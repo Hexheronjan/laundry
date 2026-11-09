@@ -1,0 +1,233 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ADMIN
+  STAFF
+}
+
+enum OrderStatus {
+  RECEIVED
+  WASHING
+  IRONING
+  PACKING
+  READY
+  DONE
+}
+
+enum Fulfillment {
+  SELF_PICKUP
+  PICKUP_BY_STORE
+  DELIVERY
+}
+
+enum PaymentStatus {
+  UNPAID
+  PENDING_VERIFICATION
+  PAID
+  REJECTED
+}
+
+enum VerificationResult {
+  APPROVED
+  REJECTED
+}
+
+model User {
+  id                 String   @id @default(cuid())
+  name               String
+  email              String   @unique
+  passwordHash       String
+  role               Role     @default(ADMIN)
+  mustChangePassword Boolean  @default(true)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  statusHistory       OrderStatusHistory[]
+  paymentVerifications PaymentVerification[]
+}
+
+/// Pengaturan usaha — hanya satu baris (id = 1).
+model Setting {
+  id                 Int      @id @default(1)
+  businessName       String   @default("Laundry Anda")
+  tagline            String   @default("Laundry Kiloan & Satuan")
+  heroTitle          String   @default("Cucian bersih, wangi, dan tepat waktu")
+  description        String   @db.Text
+  logoUrl            String?
+  faviconUrl         String?
+  heroImageUrl       String?
+  aboutText          String?  @db.Text
+  galleryUrls        Json?
+  address            String   @db.Text
+  whatsapp           String   @default("")
+  email              String   @default("")
+  /// { mon: {open:"08:00", close:"20:00", closed:false}, ... }
+  openingHours       Json
+  mapsEmbedUrl       String?  @db.Text
+  bankName           String   @default("")
+  bankAccountName    String   @default("")
+  bankAccountNumber  String   @default("")
+  primaryColor       String   @default("#0F766E")
+  accentColor        String   @default("#38BDF8")
+  /// Token: {PREFIX} {YYYY} {MM} {DD} {SEQ:n}, mis. LDR-{YYYY}{MM}{DD}-{SEQ:4}
+  invoiceFormat      String   @default("LDR-{YYYY}{MM}{DD}-{SEQ:4}")
+  seoTitle           String   @default("")
+  seoDescription     String   @default("")
+  foundedYear        Int?
+  enableDelivery     Boolean  @default(true)
+  enablePickup       Boolean  @default(true)
+  enableProofUpload  Boolean  @default(true)
+  updatedAt          DateTime @updatedAt
+}
+
+model Service {
+  id             String    @id @default(cuid())
+  name           String
+  description    String?   @db.Text
+  price          Int
+  unit           String    @default("kg")
+  estimatedHours Int       @default(48)
+  imageUrl       String?
+  isActive       Boolean   @default(true)
+  sortOrder      Int       @default(0)
+  deletedAt      DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  items OrderItem[]
+}
+
+model Customer {
+  id        String   @id @default(cuid())
+  name      String
+  /// Dinormalisasi ke format 628xxxxxxxx
+  phone     String   @unique
+  address   String?  @db.Text
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  orders Order[]
+}
+
+model Order {
+  id            String      @id @default(cuid())
+  invoiceNo     String      @unique
+  customerId    String
+  status        OrderStatus @default(RECEIVED)
+  fulfillment   Fulfillment @default(SELF_PICKUP)
+  address       String?     @db.Text
+  notes         String?     @db.Text
+  total         Int
+  receivedAt    DateTime    @default(now())
+  estimatedDoneAt DateTime
+  source        String      @default("ADMIN")
+  deletedAt     DateTime?
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  customer Customer             @relation(fields: [customerId], references: [id])
+  items    OrderItem[]
+  history  OrderStatusHistory[]
+  payment  Payment?
+
+  @@index([status, deletedAt])
+  @@index([receivedAt])
+  @@index([customerId])
+}
+
+model OrderItem {
+  id          String  @id @default(cuid())
+  orderId     String
+  serviceId   String
+  serviceName String
+  unit        String
+  unitPrice   Int
+  quantity    Decimal @db.Decimal(10, 2)
+  subtotal    Int
+
+  order   Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  service Service @relation(fields: [serviceId], references: [id])
+
+  @@index([orderId])
+  @@index([serviceId])
+}
+
+model OrderStatusHistory {
+  id        String      @id @default(cuid())
+  orderId   String
+  status    OrderStatus
+  userId    String?
+  note      String?
+  createdAt DateTime    @default(now())
+
+  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  user  User? @relation(fields: [userId], references: [id])
+
+  @@index([orderId])
+}
+
+model Payment {
+  id           String        @id @default(cuid())
+  orderId      String        @unique
+  amount       Int
+  status       PaymentStatus @default(UNPAID)
+  /// Nama file UUID di storage privat
+  proofFile    String?
+  rejectReason String?
+  paidAt       DateTime?
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+
+  order         Order                 @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  history       PaymentHistory[]
+  verifications PaymentVerification[]
+}
+
+/// Log perubahan status pembayaran (append-only).
+model PaymentHistory {
+  id        String        @id @default(cuid())
+  paymentId String
+  status    PaymentStatus
+  note      String?
+  proofFile String?
+  createdAt DateTime      @default(now())
+
+  payment Payment @relation(fields: [paymentId], references: [id], onDelete: Cascade)
+
+  @@index([paymentId])
+}
+
+/// Riwayat verifikasi admin — append-only, tidak boleh diubah/dihapus (dijaga trigger di migration).
+model PaymentVerification {
+  id        String             @id @default(cuid())
+  paymentId String
+  adminId   String
+  result    VerificationResult
+  note      String?
+  createdAt DateTime           @default(now())
+
+  payment Payment @relation(fields: [paymentId], references: [id])
+  admin   User    @relation(fields: [adminId], references: [id])
+
+  @@index([paymentId])
+}
+
+/// Penghitung nomor nota per periode agar unik & berurutan.
+model InvoiceCounter {
+  key  String @id
+  last Int    @default(0)
+}
+
+/// Rate limit berbasis database (cocok untuk satu/lebih instance).
+model RateLimit {
+  key         String   @id
+  count       Int      @default(0)
+  windowStart DateTime @default(now())
+}
