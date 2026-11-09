@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { AnimatePresence, m } from "motion/react";
-import { Menu, X, ArrowRight, PhoneCall, Sparkles, Lock } from "lucide-react";
+import { Menu, X, ArrowRight, PhoneCall, Sparkles } from "lucide-react";
 import { Logo } from "./Logo";
 import { buttonClass } from "@/components/ui/Button";
 import { cn } from "@/lib/utils/cn";
@@ -58,7 +58,7 @@ export function Navbar({ name, logoUrl }: { name: string; logoUrl?: string | nul
       <nav className="mx-auto flex max-w-6xl items-center justify-between px-5" aria-label="Navigasi Utama">
         <Logo name={name} logoUrl={logoUrl} />
 
-        <ul className="hidden items-center gap-1 lg:flex bg-white/70 backdrop-blur-md px-3 py-1.5 rounded-full border border-slate-200/80 shadow-soft">
+        <ul className="hidden items-center gap-1 xl:gap-1.5 lg:flex bg-white/80 backdrop-blur-md px-3 py-1.5 rounded-full border border-slate-200/80 shadow-soft">
           {links.map((l) => {
             const active = l.href === "/" ? pathname === "/" : pathname.startsWith(l.href);
             return (
@@ -67,7 +67,7 @@ export function Navbar({ name, logoUrl }: { name: string; logoUrl?: string | nul
                   href={l.href}
                   aria-current={active ? "page" : undefined}
                   className={cn(
-                    "rounded-full px-4 py-2 text-sm font-semibold transition-all duration-200",
+                    "whitespace-nowrap rounded-full px-3.5 py-2 text-sm font-semibold transition-all duration-200 inline-block",
                     active
                       ? "bg-primary text-white shadow-soft"
                       : "text-slate-600 hover:text-slate-950 hover:bg-slate-100/80"
@@ -82,16 +82,8 @@ export function Navbar({ name, logoUrl }: { name: string; logoUrl?: string | nul
 
         <div className="flex items-center gap-3">
           <Link
-            href="/login"
-            className="hidden sm:inline-flex items-center gap-1.5 rounded-full border border-teal-200/80 bg-teal-50/80 px-3.5 py-1.5 text-xs font-bold text-teal-800 hover:bg-teal-100 hover:border-teal-300 transition shadow-xs"
-            title="Akses Demo Panel Admin & Staf"
-          >
-            <Lock className="size-3.5 text-teal-600" /> Demo Staf
-          </Link>
-
-          <Link
             href="/pesan"
-            className={buttonClass("primary", "md", "hidden sm:inline-flex shadow-glow")}
+            className={buttonClass("primary", "md", "hidden sm:inline-flex shadow-glow whitespace-nowrap")}
           >
             <Sparkles className="size-4 text-cyan-200 animate-pulse" />
             Pesan Antar-Jemput
@@ -167,16 +159,6 @@ export function Navbar({ name, logoUrl }: { name: string; logoUrl?: string | nul
               </ul>
 
               <div className="mt-auto space-y-3 pt-6 border-t border-slate-100">
-                <Link
-                  href="/login"
-                  className="flex items-center justify-between rounded-xl px-4 py-3 text-sm font-bold text-teal-800 bg-teal-50 border border-teal-200/80 hover:bg-teal-100 transition"
-                >
-                  <span className="flex items-center gap-2">
-                    <Lock className="size-4 text-teal-600" />
-                    Demo Login Staf & Admin
-                  </span>
-                  <ArrowRight className="size-4 text-teal-600 opacity-60" />
-                </Link>
                 <Link
                   href="/pesan"
                   className={buttonClass("primary", "lg", "w-full shadow-glow")}
